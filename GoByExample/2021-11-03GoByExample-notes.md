@@ -12,8 +12,12 @@
 - [x] 2021-11-26 27~40 有一些没有完全消化，需要对照相应资料深入理解和思考
 - [x] 2021-12-13 41~53
 - [x] 2021-12-14 54~60 
+- [x] 2021-12-17 61~70
+- [ ] 2021-12-18 完结，撒花*★,°*:.☆(￣▽￣)/$:*.°★* 。!
 
 ## Readme
+
+Go是一种开源编程语言，*专为构建简单，快速和可靠的软件而设计*。请阅读官方文档以了解GO代码，工具包和模块。
 
 Go by Example 是一个通过带注释的示例程序学习 Go 语言的网站。网站包含了从简单的 Hello World 到高级特性 Goroutine、Channel 等一系列示例程序，并附带了注释说明，非常适合 Go 语言初学者。
 
@@ -853,25 +857,20 @@ PS C:\Users\chenfengyuan\Coding-cf> go run "c:\Users\chenfengyuan\Coding-cf\Go\G
 
 Go 支持 **指针**， 允许在程序中通过 `引用传递` 来传递值和数据结构。
 
-我们将通过两个函数：`zeroval` 和 `zeroptr` 来比较 `指针` 和 `值`。 `zeroval` 有一个 `int` 型参数，所以使用值传递。 `zeroval` 将从调用它的那个函数中得到一个**实参的拷贝**：`ival`。
-
-`zeroptr` 有一个和上面不同的参数：`*int`，这意味着它使用了 `int` 指针。 紧接着，函数体内的 `*iptr` 会 **解引用** 这个指针，*从它的内存地址得到这个地址当前对应的值*。 **对解引用的指针赋值，会改变这个指针引用的真实地址的值。**
-
-通过 `&i` 语法来取得 `i` 的内存地址，即指向 `i` 的指针。
-
-指针也是可以被打印的。
-
-`zeroval` 在 `main` 函数中不能改变 `i` 的值， 但是 `zeroptr` 可以，*因为它有这个变量的内存地址的引用*。
-
 ```go
 package main
 
 import "fmt"
 
+// 我们将通过两个函数：`zeroval` 和 `zeroptr` 来比较 `指针` 和 `值`。
+// `zeroval` 有一个 `int` 型参数，所以使用值传递。 
+// `zeroval` 将从调用它的那个函数中得到一个**实参的拷贝**：`ival`。
 func zeroval(ival int) {
 	ival = 0
 }
 
+// `zeroptr` 有一个和上面不同的参数：`*int`，这意味着它使用了 `int` 指针。 
+// 紧接着，函数体内的 `*iptr` 会**解引用**这个指针，从它的内存地址得到这个地址当前对应的值。 对解引用的指针赋值，会改变这个指针引用的真实地址的值。
 func zeroptr(iptr *int) {
 	*iptr = 0
 }
@@ -883,12 +882,16 @@ func main() {
 	zeroval(i)
 	fmt.Println("zeroval:", i)
 
+    // 通过 &i 语法来取得 i 的内存地址，即指向 i 的指针。
 	zeroptr(&i)
 	fmt.Println("zeroptr:", i)
 
+    // 指针也是可以被打印的。
 	fmt.Println("pointer:", &i)
 }
 ```
+
+`zeroval` 在 `main` 函数中不能改变 `i` 的值， 但是 `zeroptr` 可以，*因为它有这个变量的内存地址的引用*。
 
 PS C:\Users\chenfengyuan\Coding-cf> go run "c:\Users\chenfengyuan\Coding-cf\Go\GoByExample\pointers\pointers.go"      
 initial: 1
@@ -3895,29 +3898,913 @@ FILTER
 
 ## 61-文件路径
 
+filepath 包为 *文件路径* ，提供了方便的跨操作系统的解析和构建函数； 比如：Linux 下的 `dir/file` 和 Windows 下的 `dir\file` 。
+
+```go
+package main
+
+import (
+	"fmt"
+	"path/filepath"
+	"strings"
+)
+
+func main() {
+
+	// 应使用 Join 来构建可移植(跨操作系统)的路径。
+	// 它接收任意数量的参数，并参照传入顺序构造一个对应层次结构的路径。
+	p := filepath.Join("dir1", "dir2", "filename")
+	fmt.Println("p:", p)
+
+	// 您应该总是使用 Join 代替手动拼接 / 和 \。 
+	// 除了可移植性，Join 还会删除多余的分隔符和目录，使得路径更加规范。
+	fmt.Println(filepath.Join("dir1//", "filename"))
+	fmt.Println(filepath.Join("dir1/../dir1", "filename"))
+
+	// Dir 和 Base 可以被用于分割路径中的目录和文件。 
+	// 此外，Split 可以一次调用返回上面两个函数的结果。
+	fmt.Println("Dir(p):", filepath.Dir(p))
+	fmt.Println("Base(p):", filepath.Base(p))
+
+	// 判断路径是否为绝对路径。
+	fmt.Println(filepath.IsAbs("dir/file"))
+	fmt.Println(filepath.IsAbs("/dir/file"))
+	// 理论上是true，实际却是输出false
+	// Go Playground 运行正常
+
+	filename := "config.json"
+
+	// 某些文件名包含了扩展名（文件类型）。 
+	// 我们可以用 Ext 将扩展名分割出来。
+	ext := filepath.Ext(filename)
+	fmt.Println(ext)
+
+	// 想获取文件名清除扩展名后的值，请使用 strings.TrmSuffix。
+	fmt.Println(strings.TrimSuffix(filename, ext))
+
+	// Rel 寻找 basepath 与 targpath 之间的相对路径。 
+	// 如果相对路径不存在，则返回错误。
+	rel, err := filepath.Rel("a/b", "a/b/t/file")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(rel)
+
+	rel, err = filepath.Rel("a/b", "a/c/t/file")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(rel)
+}
+```
+
+*The Go Playground:*
+
+p: dir1/dir2/filename
+dir1/filename
+dir1/filename
+Dir(p): dir1/dir2
+Base(p): filename
+false
+true
+.json
+config
+t/file
+../c/t/file
+
+Program exited.
+
 ## 62-目录
+
+对于操作文件系统中的 目录 ，Go 提供了几个非常有用的函数。
+
+```go
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+)
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+func main() {
+
+	// 在当前工作目录下，创建一个子目录。
+	err := os.Mkdir("subdir", 0755)
+	check(err)
+
+	// 创建这个临时目录后，一个好习惯是：使用 defer 删除这个目录。
+	// os.RemoveAll 会删除整个目录（类似于 rm -rf）
+	defer os.RemoveAll("subdir")
+
+	// 一个用于创建临时文件的帮助函数。
+	createEmptyFile := func(name string) {
+		d := []byte("")
+		check(ioutil.WriteFile(name, d, 0644))
+	}
+
+	createEmptyFile("subdir/file1")
+
+	// 我们还可以创建一个有层级的目录，使用 MkdirAll 函数，并包含其父目录。 
+	// 这个类似于命令 mkdir -p。
+	err = os.MkdirAll("subdir/parent/child", 0755)
+	check(err)
+
+	createEmptyFile("subdir/parent/file2")
+	createEmptyFile("subdir/parent/file3")
+	createEmptyFile("subdir/parent/child/file4")
+
+	// ReadDir 列出目录的内容，返回一个 os.FileInfo 类型的切片对象。
+	c, err := ioutil.ReadDir("subdir/parent")
+	check(err)
+
+	fmt.Println("Listing subdir/parent")
+	for _, entry := range c {
+		fmt.Println(" ", entry.Name(), entry.IsDir())
+	}
+
+	// Chdir 可以修改当前工作目录，类似于 cd
+	err = os.Chdir("subdir/parent/child")
+	check(err)
+
+	// 当我们列出 当前 目录，就可以看到 subdir/parent/child 的内容了。
+	c, err = ioutil.ReadDir(".")
+	check(err)
+
+	fmt.Println("Listing subdir/parent/child")
+	for _, entry := range c {
+		fmt.Println(" ", entry.Name(), entry.IsDir())
+	}
+
+	// cd 回到最开始的地方。
+	err = os.Chdir("../../..")
+	check(err)
+
+	// 当然，我们也可以遍历一个目录及其所有子目录。 
+	// Walk 接受一个路径和回调函数，用于处理访问到的每个目录和文件。
+	fmt.Println("Visiting subdir")
+	err = filepath.Walk("subdir", visit)
+}
+
+// filepath.Walk 遍历访问到每一个目录和文件后，都会调用 visit。
+func visit(p string, info os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+	fmt.Println(" ", p, info.IsDir())
+	return nil 
+}
+```
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go> go run "d:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\directories\directories.go"
+Listing subdir/parent
+  child true
+  file2 false
+  file3 false
+Listing subdir/parent/child
+  file4 false
+Visiting subdir
+  subdir true
+  subdir\file1 false
+  subdir\parent true
+  subdir\parent\child true
+  subdir\parent\child\file4 false
+  subdir\parent\file2 false
+  subdir\parent\file3 false
 
 ## 63-临时文件和目录
 
+在程序运行时，我们经常创建一些运行时用到，程序结束后就不再使用的数据。 临时目录和文件 对于上面的情况很有用，因为它不会随着时间的推移而污染文件系统。
+
+```go
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+)
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+func main() {
+
+	// 创建临时文件最简单的方法是调用 ioutil.TempFile 函数。 
+	// 它会创建并打开文件，我们可以对文件进行读写。 
+	// 函数的第一个参数传 ""，ioutil.TempFile 会在操作系统的默认位置下创建该文件。
+	f, err := ioutil.TempFile("", "sample")
+	check(err)
+
+	// 打印临时文件的名称。 文件名以 ioutil.TempFile 函数的第二个参数作为前缀， 
+	// 剩余的部分会自动生成，以确保并发调用时，生成不重复的文件名。 
+	// 在类 Unix 操作系统下，临时目录一般是 /tmp。
+	fmt.Println("Temp file name:", f.Name())
+
+	// defer 删除该文件。 尽管操作系统会自动在某个时间清理临时文件，但手动清理是一个好习惯。
+	defer os.Remove(f.Name())
+
+	// 我们可以向文件写入一些数据。
+	_, err = f.Write([]byte{1, 2, 3, 4})
+	check(err)
+
+	// 如果需要写入多个临时文件，最好是为其创建一个临时 目录 。 
+	// ioutil.TempDir 的参数与 TempFile 相同， 
+	// 但是它返回的是一个 目录名 ，而不是一个打开的文件。
+	dname, err := ioutil.TempDir("", "sampledir")
+	fmt.Println("Temp dir name:", dname)
+
+	defer os.RemoveAll(dname)
+
+	// 现在，我们可以通过拼接临时目录和临时文件合成完整的临时文件路径，并写入数据。
+	fname := filepath.Join(dname, "file1")
+	err = ioutil.WriteFile(fname, []byte{1, 2}, 0666)
+	check(err)
+}
+```
+
+*The Go Playground:*
+
+Temp file name: /tmp/sample1040256948
+Temp dir name: /tmp/sampledir3886769119
+
+Program exited.
+
 ## 64-单元测试
+
+想要写出好的 Go 程序，单元测试是很重要的一部分。 testing 包为提供了编写单元测试所需的工具，写好单元测试后，我们可以通过 `go test` 命令运行测试。
+
+*为方便演示，例子的代码位于 main 包，实际上，单元测试的代码可以位于任何包下。 测试代码通常与需要被测试的代码位于同一个包下。*
+
+`intutils.go`
+
+```go
+package main
+
+// 我们要测试下面这个简单的函数——返回最小值。 
+// 一般地，需要被测试的代码应该在类似于 intutils.go 的文件下， 
+// 其对应的测试文件应该被命名为 intutils_test.go。
+
+func IntMin(a, b int) int {
+	if a < b {
+		return a
+	} else {
+		return b
+	}
+}
+```
+
+`intutils_test.go`
+
+```go
+package main
+
+import (
+	"fmt"
+	"testing"
+)
+
+// 通常编写一个名称以 Test 开头的函数来创建测试。
+func TestIntMinBasic(t *testing.T) {
+	ans := IntMin(2, -2)
+	if ans != -2 {
+		// t.Error* 会报告测试失败的信息，然后继续运行测试。 
+		// t.Fail* 会报告测试失败的信息，然后立即终止测试。
+		t.Errorf("IntMin(2, -2) = %d; want -2", ans)
+	}
+}
+
+// 单元测试可以重复，所以会经常使用 表驱动 风格编写单元测试， 
+// 表中列出了输入数据，预期输出，使用循环，遍历并执行测试逻辑。
+func TestIntMinTableDriven(t *testing.T) {
+	var tests = []struct {
+		a, b int
+		want int
+	} {
+		{0, 1, 0},
+		{1, 0, 0},
+		{2, -2, -2},
+		{0, -1, -1},
+		{-1, 0, -1},
+	}
+
+	// t.Run 可以运行一个 “subtests” 子测试，
+	// 一个子测试对应表中一行数据。 
+	// 运行 go test -v 时，他们会分开显示。
+
+	for _, tt := range tests {
+
+		testname := fmt.Sprintf("%d,%d", tt.a, tt.b)
+		t.Run(testname, func (t *testing.T) {
+			ans := IntMin(tt.a, tt.b)
+			if ans != tt.want {
+				t.Errorf("got %d, want %d", ans, tt.want)
+			}
+		})
+	}
+}
+```
+
+以啰嗦模式运行当前项目下的所有测试。
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\testing> go test -v    
+=== RUN   TestIntMinBasic
+--- PASS: TestIntMinBasic (0.00s)
+=== RUN   TestIntMinTableDriven
+=== RUN   TestIntMinTableDriven/0,1
+=== RUN   TestIntMinTableDriven/1,0
+=== RUN   TestIntMinTableDriven/2,-2
+=== RUN   TestIntMinTableDriven/0,-1
+=== RUN   TestIntMinTableDriven/-1,0
+--- PASS: TestIntMinTableDriven (0.00s)
+    --- PASS: TestIntMinTableDriven/0,1 (0.00s)
+    --- PASS: TestIntMinTableDriven/1,0 (0.00s)
+    --- PASS: TestIntMinTableDriven/2,-2 (0.00s)
+    --- PASS: TestIntMinTableDriven/0,-1 (0.00s)
+    --- PASS: TestIntMinTableDriven/-1,0 (0.00s)
+PASS
+ok      learn-go/GoByExample/testing    0.607s
 
 ## 65-命令行参数
 
+[命令行参数](http://en.wikipedia.org/wiki/Command-line_interface#Arguments) 是指定程序运行参数的一个常见方式。例如，go run hello.go， 程序 go 使用了 run 和 hello.go 两个参数。
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+
+	// os.Args 提供原始命令行参数访问功能。 
+	// 注意，切片中的第一个参数是该程序的路径， 
+	// 而 os.Args[1:]保存了程序全部的参数。
+	argsWithProg := os.Args
+	argsWithoutProg := os.Args[1:]
+
+	// 你可以使用标准的下标方式取得单个参数的值。
+	arg := os.Args[3]
+
+	fmt.Println(argsWithProg)
+	fmt.Println(argsWithoutProg)
+	fmt.Println(arg)
+}
+```
+
+要实验命令行参数，最好先使用 go build 编译一个可执行二进制文件
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-arguments> go build command-line-arguments.go
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-arguments>       ./command-line-arguments a b c d  
+[D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-arguments\command-line-arguments.exe a b c d]
+[a b c d]
+c
+
 ## 66-命令行标志
+
+下面我们要看看更高级的使用标记的命令行处理方法。
+
+[命令行标志](http://en.wikipedia.org/wiki/Command-line_interface#Command-line_option) 是命令行程序指定选项的常用方式。例如，在 `wc -l` 中， 这个 `-l` 就是一个命令行标志。
+
+```go
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+// Go 提供了一个 flag 包，支持基本的命令行标志解析。 
+// 我们将用这个包来实现我们的命令行程序示例。
+
+func main() {
+
+	// 基本的标记声明仅支持字符串、整数和布尔值选项。 
+	// 这里我们声明一个默认值为 "foo" 的字符串标志 word 并带有一个简短的描述。 
+	// 这里的 flag.String 函数返回一个字符串指针（不是一个字符串值）， 
+	// 在下面我们会看到是如何使用这个指针的。
+	wordPtr := flag.String("word", "foo", "a string")
+
+	// 使用和声明 word 标志相同的方法来声明 numb 和 fork 标志。
+	numbPtr := flag.Int("numb", 42, "an int")
+	boolPtr := flag.Bool("fork", false, "a bool")
+
+	// 用程序中已有的参数来声明一个标志也是可以的。 
+	// 注意在标志声明函数中需要使用该参数的指针。
+	var svar string
+	flag.StringVar(&svar, "svar", "bar", "a string var")
+
+	// 所有标志都声明完成以后，调用 flag.Parse() 来执行命令行解析。
+	flag.Parse()
+
+	// 这里我们将仅输出解析的选项以及后面的位置参数。 
+	// 注意，我们需要使用类似 *wordPtr 这样的语法来对指针解引用， 
+	// 从而得到选项真正的值。
+	fmt.Println("word:", *wordPtr)
+	fmt.Println("numb:", *numbPtr)
+	fmt.Println("fork:", *boolPtr)
+	fmt.Println("svar:", svar)
+	fmt.Println("tail:", flag.Args())
+}
+```
+
+测试这个程序前，最好将这个程序编译成二进制文件，然后再运行这个程序。
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-flags> go 
+build command-line-flags.go
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-flags> ls 
+
+
+    Directory: D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-li 
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        2021/12/17     20:30        2049536 command-line-flags.exe
+-a----        2021/12/17     20:29           1472 command-line-flags.go
+
+首先以给所有标志赋值的方式，尝试运行构建的程序。
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-flags> ./command-line-flags -word=opt -numb=7 -fork -svar=flag
+word: opt
+numb: 7
+fork: true
+tail: []
+
+注意，如果你省略一个标志，那么这个标志的值自动的设定为他的默认值。
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-flags> ./command-line-flags -word=opt
+word: opt
+numb: 42
+fork: false
+svar: bar
+tail: []
+
+尾随的位置参数可以出现在任何标志后面。
+
+*注意，flag 包需要所有的标志出现位置参数之前（否则，这个标志将会被解析为位置参数）。*
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-flags> ./command-line-flags -word=opt a1 a2 a3 -numb=7
+word: opt
+fork: false
+svar: bar
+tail: [a1 a2 a3 -numb=7]
+
+使用 -h 或者 --help 标志来得到自动生成的这个命令行程序的帮助文本。
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-flags> ./command-line-flags -h
+Usage of D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-flags\command-line-flags.exe:
+  -fork
+        a bool
+  -numb int
+        an int (default 42)
+  -svar string
+        a string var (default "bar")
+  -word string
+        a string (default "foo")
+
+如果你提供了一个没有使用 flag 包声明的标志， 程序会输出一个错误信息，并再次显示帮助文本。
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-flags> ./command-line-flags -wat
+flag provided but not defined: -wat
+Usage of D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-flags\command-line-flags.exe:
+  -fork
+        a bool
+  -numb int
+        an int (default 42)
+  -svar string
+        a string var (default "bar")
+  -word string
+        a string (default "foo")
+
+
 
 ## 67-命令子命令
 
+go 和 git 这种命令行工具，都有很多的 *子命令* 。 并且每个工具都有一套自己的 flag，比如： go build 和 go get 是 go 里面的两个不同的子命令。 flag 包让我们可以轻松的为工具定义简单的子命令。
+
+```go
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+)
+
+func main() {
+
+	// 我们使用 NewFlagSet 函数声明一个子命令， 
+	// 然后为这个子命令定义一个专用的 flag。
+	fooCmd := flag.NewFlagSet("foo", flag.ExitOnError)
+	fooEnable := fooCmd.Bool("enable", false, "enable")
+	fooName := fooCmd.String("name", "", "name")
+
+	// 对于不同的子命令，我们可以定义不同的 flag。
+	barCmd := flag.NewFlagSet("bar", flag.ExitOnError)
+	barLevel := barCmd.Int("level", 0, "level")
+
+	// 子命令应作为程序的第一个参数传入。
+	if len(os.Args) < 2 {
+		fmt.Println("expected 'foo' or 'bar' subcommands")
+		os.Exit(1)
+	}
+
+	// 检查哪一个子命令被调用了。
+	switch os.Args[1] {
+	// 每个子命令，都会解析自己的 flag 并允许它访问后续的位置参数。
+	case "foo":
+		fooCmd.Parse(os.Args[2:])
+		fmt.Println("subcommand 'foo'")
+		fmt.Println("	enable:", *fooEnable)
+		fmt.Println("	name:", *fooName)
+		fmt.Println("	tail:", fooCmd.Args())
+	case "bar":
+		barCmd.Parse(os.Args[2:])
+		fmt.Println("subcommand 'bar'")
+		fmt.Println("	level:", *barLevel)
+		fmt.Println("	tail:", barCmd.Args())
+	default:
+		fmt.Println("expected 'foo' or 'bar' subcommands")
+		os.Exit(1)
+	}
+}
+```
+
+*首先编译生成二进制文件。*
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-subcommands> go build command-line-subcommands.go
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-subcommands> ls
+
+    Directory: D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-li 
+    ne-subcommands
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        2021/12/17     20:55        2050560 command-line-subcommands.exe   
+-a----        2021/12/17     20:55            880 command-line-subcommands.go    
+
+*首先调用 foo 子命令。*
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-subcommands> ./command-line-subcommands foo -enable -name=joe a1 a2
+subcommand 'foo'
+        enable: true
+        name: joe
+        tail: [a1 a2]
+
+*然后试一下 bar 子命令。*
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-subcommands> ./command-line-subcommands bar -level 8 a1
+subcommand 'bar'
+        level: 8
+        tail: [a1]
+
+*但是 bar 不接受 foo 的 flag（enable）。*
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\command-line-subcommands> ./command-line-subcommands bar -enable a1
+flag provided but not defined: -enable
+Usage of bar:
+  -level int
+        level
+
 ## 68-环境变量
+
+接下来我们会学习程序获取参数的另一种常见方式——环境变量。
+
+[环境变量](http://zh.wikipedia.org/wiki/%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F) 是一种[向 Unix 程序传递配置信息](http://www.12factor.net/config)的常见方式。 让我们来看看如何设置、获取以及列出环境变量。
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+	"strings"
+)
+
+func main() {
+
+	// 使用 os.Setenv 来设置一个键值对。 
+	// 使用 os.Getenv获取一个键对应的值。 
+	// 如果键不存在，将会返回一个空字符串。
+	os.Setenv("FOO", "1")
+	fmt.Println("FOO:", os.Getenv("FOO"))
+	fmt.Println("BAR:", os.Getenv("BAR"))
+
+	// 使用 os.Environ 来列出所有环境变量键值对。 
+	// 这个函数会返回一个 KEY=value 形式的字符串切片。 
+	// 你可以使用 strings.SplitN 来得到键和值。这里我们打印所有的键。
+	fmt.Println()
+	for _, e := range os.Environ() {
+		pair := strings.SplitN(e, "=", 2)
+		fmt.Println(pair[0])
+	}
+}
+```
+
+*运行这个程序，显示我们在程序中设置的 FOO 的值， 然而没有设置的 BAR 是空的。*
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\environment-variables>go run environment-variables.go
+FOO: 1
+BAR: 
+
+
+*键的列表是由你的电脑情况而定的。*
+
+ALLUSERSPROFILE
+ANSYS180_DIR
+ANSYS_SYSDIR
+ANSYS_SYSDIR32
+ANS_OLD_ATTACH
+APPDATA
+AWP_LOCALE180
+AWP_ROOT180
+CADOE_LIBDIR180
+CommonProgramFiles
+CommonProgramFiles(x86)
+CommonProgramW6432
+COMPUTERNAME
+ComSpec
+DriverData
+FOO
+FPS_BROWSER_APP_PROFILE_STRING
+FPS_BROWSER_USER_PROFILE_STRING
+GOPATH
+HOMEDRIVE
+HOMEPATH
+ICEMCFD_ROOT180
+ICEMCFD_SYSDIR
+IntelliJ IDEA
+JAVA_HOME
+LOCALAPPDATA
+LOGONSERVER
+LSTC_LICENSE
+NUMBER_OF_PROCESSORS
+OneDrive
+OneDriveConsumer
+ORIGINAL_XDG_CURRENT_DESKTOP
+OS
+Path
+PATHEXT
+PROCESSOR_ARCHITECTURE
+PROCESSOR_IDENTIFIER
+PROCESSOR_LEVEL
+PROCESSOR_REVISION
+ProgramData
+ProgramFiles
+PSModulePath
+PUBLIC
+PyCharm
+PyCharm Community Edition
+P_SCHEMA
+SESSIONNAME
+SystemDrive
+SystemRoot
+TEMP
+TMP
+USERDOMAIN
+USERNAME
+USERPROFILE
+windir
+TERM_PROGRAM
+TERM_PROGRAM_VERSION
+LANG
+COLORTERM
+VSCODE_GIT_IPC_HANDLE
+GIT_ASKPASS
+VSCODE_GIT_ASKPASS_NODE
+VSCODE_GIT_ASKPASS_EXTRA_ARGS
+
+
+*如果我们在运行前设置了 BAR 的值，那么运行程序将会获取到这个值。*
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\environment-variables>go run environment-variables.go BAR=2      
+FOO: 1
+BAR: 
+
+ALLUSERSPROFILE
+ANSYS180_DIR
+ANSYS_SYSDIR
+ANSYS_SYSDIR32
+ANS_OLD_ATTACH
+APPDATA
+AWP_LOCALE180
+AWP_ROOT180
+CADOE_LIBDIR180
+CommonProgramFiles
+CommonProgramFiles(x86)
+CommonProgramW6432
+COMPUTERNAME
+ComSpec
+DriverData
+FOO
+FPS_BROWSER_APP_PROFILE_STRING
+FPS_BROWSER_USER_PROFILE_STRING
+GOPATH
+HOMEDRIVE
+HOMEPATH
+ICEMCFD_ROOT180
+ICEMCFD_SYSDIR
+IntelliJ IDEA
+JAVA_HOME
+LOCALAPPDATA
+LOGONSERVER
+LSTC_LICENSE
+NUMBER_OF_PROCESSORS
+OneDrive
+OneDriveConsumer
+ORIGINAL_XDG_CURRENT_DESKTOP
+OS
+Path
+PATHEXT
+PROCESSOR_ARCHITECTURE
+PROCESSOR_IDENTIFIER
+PROCESSOR_LEVEL
+PROCESSOR_REVISION
+ProgramData
+ProgramFiles
+ProgramFiles(x86)
+PSModulePath
+PUBLIC
+PyCharm
+PyCharm Community Edition
+P_SCHEMA
+SESSIONNAME
+SystemDrive
+SystemRoot
+TEMP
+TMP
+USERDOMAIN
+USERDOMAIN_ROAMINGPROFILE
+USERNAME
+USERPROFILE
+windir
+TERM_PROGRAM
+TERM_PROGRAM_VERSION
+LANG
+COLORTERM
+VSCODE_GIT_IPC_HANDLE
+GIT_ASKPASS
+VSCODE_GIT_ASKPASS_NODE
+VSCODE_GIT_ASKPASS_EXTRA_ARGS
+VSCODE_GIT_ASKPASS_MAIN
 
 ## 69-HTTP客户端
 
-## 70-Context
+Go 标准库的 net/http 包为 HTTP 客户端和服务端提供了出色的支持。 在这个例子中，我们将使用它发送简单的 HTTP 请求。
 
-## 71-生成进程
+```go
+package main
 
-## 72-执行进程
+import (
+	"bufio"
+	"fmt"
+	"net/http"
+)
 
-## 73-信号
+func main() {
 
-## 74-退出
+	// 向服务端发送一个 HTTP GET 请求。 
+	// http.Get 是创建 http.Client 对象并调用其 Get 方法的快捷方式。 
+	// 它使用了 http.DefaultClient 对象及其默认设置。
+	resp, err := http.Get("http://gobyexample.com")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	// 打印 HTTP response 状态.
+	fmt.Println("Response status:", resp.Status)
+
+	var lines int = 30
+
+	// 打印 response body 前面 lines 行的内容。
+	scanner := bufio.NewScanner(resp.Body)
+	for i := 0; scanner.Scan() && i < lines; i++ {
+		fmt.Println(scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		panic(err)
+	}
+}
+```
+
+PS D:\gocf\src\github.com> go run "d:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\http-clients\http-clients.go"
+Response status: 200 OK
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Go by Example</title>
+        open source programming language designed for
+        building simple, fast, and reliable software.
+        Please read the official
+        <a href="https://golang.org/doc/tutorial/getting-started">documentation</a>
+        to learn a bit about Go code, tools packages,
+        and modules.
+      </p>
+
+      <p>
+        <em>Go by Example</em> is a hands-on introduction
+        to Go using annotated example programs. Check out
+        the <a href="hello-world">first example</a> or
+        browse the full list below.
+      </p>
+
+      <ul>
+
+        <li><a href="hello-world">Hello World</a></li>
+
+## 70 HTTP服务端
+
+使用 net/http 包，我们可以轻松实现一个简单的 HTTP 服务器。
+
+```go
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+
+// handlers 是 net/http 服务器里面的一个基本概念。 
+// handler 对象实现了 http.Handler 接口。 编写 handler 的常见方法是，
+// 在具有适当签名的函数上使用 http.HandlerFunc 适配器。
+
+func hello(w http.ResponseWriter, req *http.Request) {
+	// handler 函数有两个参数，http.ResponseWriter 和 http.Request。 
+	// response writer 被用于写入 HTTP 响应数据，
+	// 这里我们简单的返回 “hello\n”。
+	fmt.Fprintf(w, "hello\n")
+
+}
+
+// 这个 handler 稍微复杂一点， 
+// 我们需要读取的 HTTP 请求 header 中的所有内容，
+// 并将他们输出至 response body。
+
+func headers(w http.ResponseWriter, req *http.Request) {
+
+	for name, headers := range req.Header {
+		for _, h := range headers {
+			fmt.Fprintf(w, "%v: %v\n", name, h)
+		}
+	}
+}
+
+func main() {
+
+	// 使用 http.HandleFunc 函数，
+	// 可以方便的将我们的 handler 注册到服务器路由。 
+	// 它是 net/http 包中的默认路由，接受一个函数作为参数。
+	http.HandleFunc("/hello", hello)
+	http.HandleFunc("/headers", headers)
+
+	// 最后，我们调用 ListenAndServe 并带上端口和 handler。 
+	// nil 表示使用我们刚刚设置的默认路由器。
+	http.ListenAndServe(":8090", nil)
+}
+```
+
+*curl 是常用的命令行工具，用来请求Web 服务器*。它的名字就是客户端（client）的URL 工具的意思。 它的功能非常强大，命令行参数多达几十种。
+
+*后台运行服务器。*
+
+$ go run http-servers.go &
+
+*访问 /hello 路由*
+
+$ curl localhost:8090/hello
+hello
+
+## 71-Context
+
+
+
+## 72-生成进程
+
+
+## 73-执行进程
+
+
+
+## 74-信号
+
+
+
+## 75-退出
 
