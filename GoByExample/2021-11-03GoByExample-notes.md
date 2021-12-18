@@ -13,7 +13,7 @@
 - [x] 2021-12-13 41~53
 - [x] 2021-12-14 54~60 
 - [x] 2021-12-17 61~70
-- [ ] 2021-12-18 完结，撒花*★,°*:.☆(￣▽￣)/$:*.°★* 。!
+- [x] 2021-12-18 完结，撒花*★,°*:.☆(￣▽￣)/$:*.°★* 。!
 
 ## Readme
 
@@ -4793,18 +4793,287 @@ hello
 
 ## 71-Context
 
+在前面的示例中，我们研究了配置简单的 HTTP 服务器。 HTTP 服务器对于演示 context.Context 的用法很有用的， context.Context 被用于控制 cancel。 Context 跨 API 边界和协程携带了：*deadline、取消信号以及其他请求范围的值*。
 
+```go
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"time"
+)
+
+func hello(w http.ResponseWriter, req *http.Request) {
+
+	// net/http 机制为每个请求创建了一个 context.Context， 
+	// 并且可以通过 Context() 方法获取并使用它。
+	ctx := req.Context()
+	fmt.Println("server: hello handler started")
+	defer fmt.Println("server: hello handler ended")
+
+	// 等待几秒钟，然后再将回复发送给客户端。 
+	// 这可以模拟服务器正在执行的某些工作。 
+	// 在工作时，请密切关注 context 的 Done() 通道的信号， 
+	// 一旦收到该信号，表明我们应该取消工作并尽快返回。
+	select {
+	case <-time.After(10 * time.Second):
+		fmt.Fprintln(w, "hello\n")
+	case <-ctx.Done():
+
+		// context 的 Err() 方法返回一个错误， 
+		// 该错误说明了 Done 通道关闭的原因。
+		err := ctx.Err()
+		fmt.Println("server:", err)
+		internalError := http.StatusInternalServerError
+		http.Error(w, err.Error(), internalError)
+	}
+}
+
+func main() {
+
+	// 跟前面一样，我们在 /hello 路由上注册 handler，然后开始提供服务。
+	http.HandleFunc("/hello", hello)
+	http.ListenAndServe(":8090", nil)
+}
+```
+
+*后台运行服务器。*
+
+$ go run context-in-http-servers.go &
+
+*模拟客户端发出 /hello 请求， 在服务端开始处理后，按下 Ctrl+C 以发出取消信号。*
+
+$ curl localhost:8090/hello
+server: hello handler started
+^C
+server: context canceled
+server: hello handler ended
 
 ## 72-生成进程
+
+有时，我们的 Go 程序需要生成其他的、非 Go 的进程。 例如，这个网站的语法高亮是通过在 Go 程序中生成一个 [pygmentize](http://pygments.org/) 来[实现的](https://github.com/everyx/gobyexample/blob/master/tools/generate.go)。 让我们看一些关于 Go 生成进程的例子。
+
+```go
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"os/exec"
+)
+
+func main() {
+
+	// 我们将从一个简单的命令开始，没有参数或者输入，
+	// 仅打印一些信息到标准输出流。 
+	// exec.Command 可以帮助我们创建一个对象，来表示这个外部进程。
+	dateCmd := exec.Command("date")
+
+	// .Output 是另一个帮助函数，常用于处理运行命令、等待命令完成并收集其输出。 
+	// 如果没有错误，dateOut 将保存带有日期信息的字节。
+	dateOut, err := dateCmd.Output()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("> date")
+	fmt.Println(string(dateOut))
+
+	// 下面我们将看看一个稍复杂的例子， 
+	// 我们将从外部进程的 stdin 输入数据并从 stdout 收集结果。
+	grepCmd := exec.Command("grep", "hello")
+
+	// 这里我们明确的获取输入/输出管道，运行这个进程， 
+	// 写入一些输入数据、读取输出结果，最后等待程序运行结束。
+	grepIn, _ := grepCmd.StdinPipe()
+	grepOut, _ := grepCmd.StdoutPipe()
+	grepCmd.Start()
+	grepIn.Write([]byte("hello grep\ngoodbye grep"))
+	grepIn.Close()
+	grepBytes, _ := ioutil.ReadAll(grepOut)
+	grepCmd.Wait()
+
+	// 上面的例子中，我们忽略了错误检测， 
+	// 当然，你也可以使用常见的 if err != nil 方式来进行错误检查。 
+	// 我们只收集了 StdoutPipe 的结果， 
+	// 但是你可以使用相同的方法收集 StderrPipe 的结果。
+	fmt.Println("> grep hello")
+	fmt.Println(string(grepBytes))
+
+	// 注意，在生成命令时，我们需要提供一个明确描述命令和参数的数组，
+	// 而不能只传递一个命令行字符串。 
+	// 如果你想使用一个字符串生成一个完整的命令，
+	// 那么你可以使用 bash 命令的 -c 选项：
+	lsCmd := exec.Command("bash", "-c", "ls -a -l -h")
+	lsOut, err := lsCmd.Output()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("> ls -a -l -h")
+	fmt.Println(string(lsOut))
+}
+```
+
+*生成的程序返回的输出，和我们直接通过命令行运行这些程序的输出是相同的。*
+
+```shell
+$ go run spawning-processes.go 
+
+> date
+Wed Oct 10 09:53:11 PDT 2012
+> grep hello
+hello grep
+> ls -a -l -h
+drwxr-xr-x  4 mark 136B Oct 3 16:29 .
+drwxr-xr-x 91 mark 3.0K Oct 3 12:50 ..
+-rw-r--r--  1 mark 1.3K Oct 3 16:28 spawning-processes.go
+```
+
+> 上述程序运行于Linux系统, Windows系统没有支持 `grep` 的命令。
 
 
 ## 73-执行进程
 
+在前面的例子中，我们了解了生成外部进程的知识， 当我们需要在运行的 Go 流程中访问的外部流程时，便可以执行此操作。 但是有时候，我们只想用其它（也许是非 Go）的进程，来完全替代当前的 Go 进程。 这时，我们可以使用经典的 [exec](http://en.wikipedia.org/wiki/Exec_(operating_system)) 函数的 Go 的实现。
 
+```go
+package main
+
+import (
+	"os"
+	"os/exec"
+	"syscall"
+)
+
+func main() {
+
+	// 在这个例子中，我们将执行 ls 命令。 
+	// Go 要求我们提供想要执行的可执行文件的绝对路径， 
+	// 所以我们将使用 exec.LookPath 找到它（应该是 /bin/ls）。
+	binary, lookErr := exec.LookPath("ls")
+	if lookErr != nil {
+		panic(lookErr)
+	}
+
+	// Exec 需要的参数是切片的形式的（不是放在一起的一个大字符串）。 
+	// 我们给 ls 一些基本的参数。注意，第一个参数需要是程序名。
+	args := []string{"ls", "-a", "-l", "-h"}
+
+	// Exec 同样需要使用环境变量。 这里我们仅提供当前的环境变量。
+	env := os.Environ()
+
+	// 这里是真正的 syscall.Exec 调用。 
+	// 如果这个调用成功，那么我们的进程将在这里结束，
+	// 并被 /bin/ls -a -l -h 进程代替。 
+	// 如果存在错误，那么我们将会得到一个返回值。
+	execErr := syscall.Exec(binary, args, env)
+	if execErr != nil {
+		panic(execErr)
+	}
+}
+```
+
+*当我们运行程序时，它会替换为 ls。*
+
+```shell
+$ go run execing-processes.go
+total 16
+drwxr-xr-x  4 mark 136B Oct 3 16:29 .
+drwxr-xr-x 91 mark 3.0K Oct 3 12:50 ..
+-rw-r--r--  1 mark 1.3K Oct 3 16:28 execing-processes.go
+```
+
+注意 Go 没有提供 Unix 经典的 fork 函数。 一般来说，这没有问题，
+*因为启动协程、生成进程和执行进程， 已经涵盖了 fork 的大多数使用场景。*
 
 ## 74-信号
 
+有时候，我们希望 Go 可以智能的处理 [Unix 信号](http://en.wikipedia.org/wiki/Unix_signal)。 例如，我们希望当服务器接收到一个 SIGTERM 信号时，能够优雅退出， 或者一个命令行工具在接收到一个 SIGINT 信号时停止处理输入信息。 *我们这里讲的就是在 Go 中如何使用通道来处理信号。*
 
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+)
+
+func main() {
+
+	// Go 通过向一个通道发送 os.Signal 值来发送信号通知。 
+	// 我们将创建一个通道来接收这些通知
+	// （同时再创建一个在程序结束时发送通知的通道）。
+	sigs := make(chan os.Signal, 1)
+	done := make(chan bool, 1)
+
+	// signal.Notify 注册给定的通道，用于接收特定信号。
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	// 这个协程执行一个阻塞的信号接收操作。 
+	// 当它接收到一个值时，它将打印这个值，然后通知程序可以退出。
+	go func() {
+		sig := <-sigs
+		fmt.Println()
+		fmt.Println(sig)
+		done <- true
+	}()
+
+	// 程序将在这里进行等待，
+	// 直到它得到了期望的信号 （也就是上面的协程发送的 done 值），
+	// 然后退出。
+	fmt.Println("awaiting signal")
+	<- done
+	fmt.Println("exiting")
+}
+```
+
+当我们运行这个程序时，它将一直等待一个信号。 通过 ctrl-C（终端显示为 ^C），我们可以发送一个 SIGINT 信号， 这会使程序打印 interrupt 然后退出。
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\spawning-processes> go 
+run "d:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\signals\signals.go"  
+awaiting signal
+
+interrupt
+exiting
 
 ## 75-退出
 
+使用 os.Exit 可以立即以给定的状态退出程序
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+
+	// 当使用 os.Exit 时 defer 将不会 被执行， 
+	// 所以这里的 fmt.Println 将永远不会被调用。
+	defer fmt.Println("!")
+
+	// 退出并且退出状态为 3。
+	os.Exit(3)
+}
+```
+
+> 注意，不像例如 C 语言，Go 不使用在 main 中返回一个整数来指明退出状态。 如果你想以非零状态退出，那么你就要使用 os.Exit。
+
+*如果你使用 go run 来运行 exit.go，那么退出状态将会被 go 捕获并打印。*
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\exit> go run "d:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\exit\exit.go"
+exit status 3
+
+*通过编译并执行一个二进制文件的方式，你可以在终端中查看退出状态。*
+
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\exit> go build exit.go
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\exit> ./exit 
+PS D:\gocf\src\github.com\yuancf1024\learn-go\GoByExample\exit> echo $?
+False  
+
+> 注意，程序中的 ! 永远不会被打印出来。
