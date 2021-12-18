@@ -434,16 +434,382 @@ var ch4 chan *stu
 
 两个协程间如果有数据交流怎么办？这时候就可以用通道来传递。**Golang的设计思想就是用通信代替共享内存。**
 
-### 接口(interface)
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+var ch chan int
+
+func a() {
+	time.Sleep(3 * time.Second)
+	a := 5
+	ch <- a
+	fmt.Println("out of a")
+}
+
+func b() {
+	time.Sleep(1 * time.Second)
+	fromA := <- ch
+	b := fromA + 3
+	fmt.Println("b is ", b)
+}
+
+func main() {
+	ch = make(chan int, 1)
+	go a()
+	go b()
+	time.Sleep(5 * time.Second)
+	fmt.Println("out of main")
+}
+```
+
+**Output:**
+
+PS D:\gocf\src\github.com\yuancf1024\web> go run "d:\gocf\src\github.com\yuancf1024\learn-go\Notes-cf\Go-quick-start\channel.go"
+out of a
+b is  8
+out of main
+
+可以看到，更慢一些的b，是等管道有数据才继续运行，并成功拿到了a往管道里放入的数字5！这就完成了协程间的通信。
+
+
+另外，这里也涉及到一个**面试高频问题**：有缓冲和无缓冲通道的区别？
+
+*通道可以带缓冲，就是说可以往通道里放多个数据，放满了，才会阻塞。*
+
+有一段时间，牛牛一直误以为无缓冲通道就是容量为1的有缓冲通道，于是就以此为例来进行讲解：
+
+```go
+chSync := make(chan int) // 无缓冲
+chAsyn := make(chan int, 1) // 有缓冲
+```
+
+同样是向通道里塞一个数据：chSync <-1
+
+**无缓冲场景**：*一直要等有别的协程通过<-chSync接手了这个参数，那么chSync<-1才会继续下去，要不然就一直阻塞着。*
+
+**有缓冲场景**：*chAsyn<-1则不会阻塞，因为缓冲大小是1，只有当放第二个值的时候，第一个还没被人拿走，这时候才会阻塞。*
+
+仔细理解下，实际这就是同步和异步的区别，**无缓冲一定是同步等待**，**有缓冲只有在缓冲满了，异步又处理不过来的时候，才会阻塞**。
 
 **无缓冲**
 
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+var ch chan int
+
+func a() {
+	time.Sleep(3 * time.Second)
+	a := 5
+	ch <- a
+	fmt.Println("out of a")
+}
+
+func b() {
+	time.Sleep(1 * time.Second)
+}
+
+func main() {
+	ch = make(chan int) // 无缓冲管道
+	go a()
+	go b()
+	time.Sleep(5 * time.Second)
+	fmt.Println("out of main")
+}
+```
+
+**Output:**
+
+PS D:\gocf\src\github.com\yuancf1024\web> go run "d:\gocf\src\github.com\yuancf1024\learn-go\Notes-cf\Go-quick-start\channel-no-buffer.go"
+out of main
+
+可以看到，在没有接盘侠的情况下，a在写管道时被阻塞了。
+
 **有缓冲**
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+var ch chan int
+
+func a() {
+	time.Sleep(3 * time.Second)
+	a := 5
+	ch <- a
+	fmt.Println("out of a")
+}
+
+func b() {
+	time.Sleep(1 * time.Second)
+}
+
+func main() {
+	ch = make(chan int, 1) // 有缓冲管道
+	go a()
+	go b()
+	time.Sleep(5 * time.Second)
+	fmt.Println("out of main")
+}
+```
+
+**Output:**
+
+
+
+可以看到，函数a往管道写入一个数据，即使没有消费者，也并未阻塞。
+
+PS D:\gocf\src\github.com\yuancf1024\web> go run "d:\gocf\src\github.com\yuancf1024\learn-go\Notes-cf\Go-quick-start\channel-buffer.go"
+out of a
+out of main
+
+### 接口(interface)
+
+Go 语言提供了一种特别的数据类型——**接口**，*它把所有具有共性的方法定义在一起，任何其他类型只要实现了这些方法就是实现了这个接口。*
+
+话不多说，看看🌰：
+
+```go
+package main
+
+import "fmt"
+
+type Shape interface {
+	Area() float64
+	Perimeter() float64
+}
+
+// type rect
+type Rect struct {
+	height float64
+	weight float64
+}
+
+func (p *Rect) Area() float64 {
+	return p.height * p.weight
+}
+
+func (p *Rect) Perimeter() float64 {
+	return 2 * (p.height + p.weight)
+}
+
+func main() {
+	var s Shape = &Rect{height: 10, weight: 8}
+	fmt.Println(s.Area())
+	fmt.Println(s.Perimeter())
+}
+```
+
+**Output:**
+
+PS D:\gocf\src\github.com\yuancf1024\web> go run "d:\gocf\src\github.com\yuancf1024\learn-go\Notes-cf\Go-quick-start\interface.go"
+80
+36
+
+代码中Shape就是一个接口，声明了两个方法：面积（Area）和周长（Perimeter）。
+
+咱们定义了一个具体结构Rect，实现这个接口。可以看到，用基础的Shape接口，可以一个指向Rect对象，并调用其方法。
+
+接口提供了面向对象编程的能力，如果你掌握多种语言，比如Golang、C++、Java等等，那么一定会问**Golang的多态和C++的多态有什么区别**（**使用相同类型的引用，指向不同类型对象，即多态**）。
+
+答案就是*C++或者Java是需要主动声明基础类*，而*Golang，只需要实现某个interface的全部方法，那么就是实现了该类型。*所以，Golang的继承关系是**非侵入式的**，这也是Golang的特色与优点。
 
 ## 单元测试介绍
 
+为了保证代码的质量，很多公司都会要求写单元测试。这里介绍单元测试的两个常用指标：
+
+1. **函数覆盖率**：被调用到的函数个数/总函数个数，通常要求100%；
+
+2. 行覆盖率：被调用到的行数/总行数，通常要求>60%。
+
+通过单元测试，我们可以针对不同场景测试代码，是研发自己对质量的把控。
+
+牛牛之前在**字节跳动SaaS**化部门，没有专门的测试人员，对单元测试的要求就非常高，行覆盖率需要达到80%。
+
+
+**go test**
+
+- go的test一般以xxx_test.go为文件名，xxx并没有特别要求必须是要实测的文件名；
+
+- TestMain作为初始化test；
+
+- Testxxx(t* testing.T)；
+
+- go test即可运行单元测试；
+
+- go test --v fileName --test.run funcName可以指定单测某个方法。
+
+我们来创建一个main_test.go文件进行示例，main.go文件就使用上面的interface例子，包结构如下：
+
+```shell
+├── main.go
+├── main_test.go
+```
+
+`main_test.go`
+
+```go
+package main
+
+import "testing"
+
+func TestRect(t *testing.T) {
+	var s Shape = &Rect{height: 10, weight: 8}
+	if s.Area() != 80 {
+		t.Errorf("area %f\n", s.Area())
+	}
+
+	if s.Perimeter() != 30 {
+		t.Errorf("perimeter %f\n", s.Perimeter())
+	}
+}
+```
+
+使用`go test-v`
+
+由于周长Perimeter不符合预期，则会有如下提示：
+
+```shell
+PS D:\gocf\src\github.com\yuancf1024\learn-go\Notes-cf\Go-quick-start\test> go test -v
+=== RUN   TestRect
+    main_test.go:12: perimeter 36.000000
+--- FAIL: TestRect (0.00s)
+FAIL
+exit status 1
+FAIL    Notes-cf/Go-quick-start/test    0.370s
+```
+
+**go convey**
+
+go convey可以很好的支持setup和teardown，它可以在运行单个测试用例前都进行一次状态初始化，在结束后再进行销毁。这样如果有多个子用例，可以复用同一套初始化环境。
+
+go convey还有很多已经定义好，能够直接使用的assert函数，并且还可以自定义assert函数。
+
+常用的assert如下：
+
+```go
+
+var (
+    ShouldEqual          = assertions.ShouldEqual
+    ShouldNotEqual       = assertions.ShouldNotEqual
+    ShouldBeGreaterThan          = assertions.ShouldBeGreaterThan
+    ShouldBeGreaterThanOrEqualTo = assertions.ShouldBeGreaterThanOrEqualTo
+    ShouldBeLessThan             = assertions.ShouldBeLessThan
+    ShouldBeLessThanOrEqualTo    = assertions.ShouldBeLessThanOrEqualTo
+    ShouldBeBetween              = assertions.ShouldBeBetween
+    ShouldNotBeBetween           = assertions.ShouldNotBeBetween
+    ShouldBeBetweenOrEqual       = assertions.ShouldBeBetweenOrEqual
+    ShouldNotBeBetweenOrEqual    = assertions.ShouldNotBeBetweenOrEqual
+    ShouldContainSubstring    = assertions.ShouldContainSubstring
+    ShouldNotContainSubstring = assertions.ShouldNotContainSubstring
+    ShouldPanic        = assertions.ShouldPanic
+    ShouldBeError      = assertions.ShouldBeError
+)
+```
+
+使用举例：
+
+```go
+
+package main
+
+import (
+ "testing"
+
+ "github.com/smartystreets/goconvey/convey"
+)
+
+func TestRect(t *testing.T) {
+    convey.Convey("TestRect", t, func() {
+        var s Shape = &Rect{height: 10, weight: 8}
+        convey.So(s.Area(), convey.ShouldEqual, 80)
+        convey.So(s.Perimeter(), convey.ShouldEqual, 30)
+    })
+}
+```
+
+由于Perimeter不符合预期，会出现如下提示：
+
+用convey做断言，是不是更清晰明了了。
 
 ## 用ORM连接数据库
+
+**什么是ORM?**
+
+ORM的全称是：Object Relational Mapping(对象关系映射)，其主要作用是在编程中，把面向对象的概念跟数据库中表的概念对应起来。
+
+举例来说就是我们*定义一个对象，那就对应着一张表，这个对象的实例，就对应着表中的一条记录。*
+
+GORM使用示例：
+
+```go
+
+package main
+
+import (
+"fmt"
+   "github.com/jinzhu/gorm" 
+   _ "github.com/jinzhu/gorm/dialects/mysql"
+)
+
+type User struct {
+    Name string
+    Age int
+}
+
+func main() {
+
+    username := ""
+    pwd := ""
+    addr := "" //ip:port
+    database := ""
+    args := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8&parseTime=True&loc=Local", username, pwd, addr, database)
+
+    // step1 : 连接数据库
+    db, err := gorm.Open("mysql", args) 
+    if err != nil {
+        fmt.Println(err)
+        //do something
+        return
+    }
+    defer db.Close()
+
+    // step2 : 插入一行记录
+    user := User{Name: "niuniu", Age: 18}
+    err = db.Create(&user)
+    if err != nil {
+        fmt.Println(err)
+        return
+    } 
+
+    // step3 ：查询记录
+    var tmpUser User
+    err = db.Where("name = ?", "niuniu").First(&tmpUser).Error //查询User并将信息保存到tmpUser
+    if err != nil {
+        fmt.Println(err)
+        return
+    } 
+    fmt.Println(tmpUser)
+}
+```
+
+最终结果:
+
+{niuniu 18}
 
 ## 以一个web server结束
 
