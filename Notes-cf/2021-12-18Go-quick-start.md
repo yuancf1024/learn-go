@@ -476,3 +476,33 @@ func main() {
 **用框架来一发**
 
 在实际开发中，很少会直接用http裸写sever，因为如果进行功能的完善，比如可插拔中间件实现，最终就是自己实现了框架，而实际开发中，我们会选择久经考验的完善框架，比如gin：
+
+```go
+package main
+
+import (
+	"github.com/gin-gonic/gin"
+	"log"
+	"net/http"
+)
+
+func SayHello(c *gin.Context) {
+	c.String(http.StatusOK, "hello") // 以字符串"hello"作为返回包
+}
+
+func main() {
+	engine := gin.Default() // 生成一个默认的gin引擎
+	engine.Handle(http.MethodGet, "/say_hello", SayHello)
+	err := engine.Run(":8080") // 使用8080端口号,开启一个web服务
+	if err != nil {
+		log.Print("engine run err: ", err.Error())
+	}
+	return
+}
+```
+
+## 小结
+
+至此，Golang的基本玩法，大家有所了解了吗？
+
+希望Go起来这个系列的文章可以帮助大家快速入门，尽快投入开发，但如果要成为资深的Golang开发者，还需要针对细节，做深入研究。
