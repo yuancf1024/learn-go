@@ -27,9 +27,9 @@ Go by Example 是一个通过带注释的示例程序学习 Go 语言的网站�
 
 1. 指针
 
-\* 解引用指针，从对应地址获取值；
+`*` **解引用指针**，从对应地址获取值；
 
-& 取得对象的内存地址，即指向对象的指针。
+`&` **取得对象的内存地址**，即指向对象的指针。
 
 2. Go 计算程序运行时间
 
@@ -4724,9 +4724,9 @@ Response status: 200 OK
         the <a href="hello-world">first example</a> or
         browse the full list below.
       </p>
-
+    
       <ul>
-
+    
         <li><a href="hello-world">Hello World</a></li>
 
 ## 70 HTTP服务端
