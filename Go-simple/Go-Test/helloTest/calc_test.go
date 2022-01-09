@@ -13,11 +13,14 @@ func TestAdd(t *testing.T) {
 }
 
 func TestMul(t *testing.T) {
-	if ans := Mul(1, 2); ans != 2 {
-		t.Errorf("1 + 2 expected be 2, but %d got", ans)
-	}
-
-	if ans := Mul(-10, -20); ans != 200 {
-		t.Errorf("-10 + -20 expected be 200, but %d got", ans)
-	}
+	t.Run("pos", func(t *testing.T) {
+		if Mul(2, 3) != 6 {
+			t.Fatal("fail")
+		}
+	})
+	t.Run("neg", func(t *testing.T) {
+		if Mul(2, -3) != -6 {
+			t.Fatal("fail")
+		}
+	})
 }
